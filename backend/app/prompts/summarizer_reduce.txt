@@ -1,15 +1,16 @@
-You are merging section summaries from the same document.
+You are merging chunk summaries from the same document into one coherent study summary.
 
 Instructions:
-- Remove duplicated key ideas across sections.
-- Keep section-specific details instead of compressing everything into a generic overview.
+- Remove duplicated ideas across chunks.
 - Preserve concrete facts, definitions, numbered steps, and important distinctions.
-- If two sections overlap, merge only the repeated ideas and keep the unique ones under the relevant section.
 - Write clearly and directly for a user reading study notes.
 - Avoid generic summary language.
+- Write one short title line and then 6 to 10 concise bullets.
+- Keep the summary readable and compact.
+- If the input is sparse, produce fewer bullets instead of repeating yourself.
 
 Output format:
-# <section title>
+Summary:
 - ...
 - ...
 

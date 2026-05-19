@@ -9,6 +9,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Sparkles } from 'lucide-react';
 
+function toLines(summary: string) {
+  return summary
+    .split('\n')
+    .map((line) => line.trim().replace(/●/g, ''))
+    .filter(Boolean);
+}
+
 export function SummaryTab() {
   const {
     sessionData,
@@ -61,6 +68,8 @@ export function SummaryTab() {
     );
   }
 
+  const lines = toLines(summary);
+
   return (
     <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
       <div className="border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-secondary/5 px-6 py-5">
@@ -82,11 +91,31 @@ export function SummaryTab() {
       </div>
 
       <div className="space-y-6 px-6 py-6">
-        <div className="rounded-3xl border border-border/70 bg-muted/25 p-5 sm:p-6">
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <div className="whitespace-pre-wrap text-[15px] leading-8 text-foreground">
-              {summary}
-            </div>
+        <div className="rounded-3xl border border-border/70 bg-muted/20 p-5 sm:p-6">
+          <div className="space-y-3">
+            {lines.map((line, index) => {
+              const isBullet = /^[-•●]\s+/.test(line);
+              const cleanLine = line.replace(/^[-•●]\s+/, '').trim();
+
+              if (!cleanLine) {
+                return null;
+              }
+
+              if (isBullet) {
+                return (
+                  <div key={`${line}-${index}`} className="flex gap-3 text-sm leading-7 text-foreground">
+                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    <span>{cleanLine}</span>
+                  </div>
+                );
+              }
+
+              return (
+                <p key={`${line}-${index}`} className="text-sm leading-7 text-foreground">
+                  {cleanLine}
+                </p>
+              );
+            })}
           </div>
         </div>
 

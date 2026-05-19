@@ -11,12 +11,15 @@ export interface UploadResponse {
   session_id: string;
   file_name: string;
   status: string;
+  summary: string;
+  word_count: number;
 }
 
 // Summary Response
 export interface SummaryResponse {
   session_id: string;
   summary: string;
+  word_count: number;
 }
 
 // Quiz Question (does NOT include correct_answer)

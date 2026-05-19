@@ -7,9 +7,8 @@ import { QuizQuestion, QuizAnswers } from '@/lib/types';
 import { QuizSkeleton } from '../skeletons';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 
 export function QuizTab() {
   const {
@@ -97,32 +96,13 @@ export function QuizTab() {
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
-        <div className="bg-gradient-to-r from-primary/5 via-background to-secondary/5 px-6 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1">
-              <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary">
-                <Sparkles className="mr-2 h-3.5 w-3.5" />
-                Quiz
-              </Badge>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Test your understanding
-              </h2>
-              <p className="text-sm leading-6 text-muted-foreground">
-                Answer all questions before submitting so the grade can be computed cleanly.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{answeredCount}</span> / {questions.length}{' '}
-              answered
-            </div>
-          </div>
-
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
-              style={{ width: `${(answeredCount / questions.length) * 100}%` }}
-            />
-          </div>
+        <div className="border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-secondary/5 px-6 py-5">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Quiz
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Answer the questions below, then submit to see your score.
+          </p>
         </div>
       </Card>
 
@@ -135,9 +115,9 @@ export function QuizTab() {
             <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <Badge variant="secondary" className="rounded-full">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Question {qIndex + 1}
-                  </Badge>
+                  </p>
                   <h3 className="text-lg font-semibold leading-7 text-foreground sm:text-xl">
                     {question.question}
                   </h3>
@@ -196,12 +176,10 @@ export function QuizTab() {
         ))}
       </div>
 
-      <Card className="sticky bottom-4 border-border/70 bg-card/95 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.4)] backdrop-blur">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="border-border/70 bg-card/90 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.4)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-muted-foreground">
-            {answeredCount === questions.length
-              ? 'All questions are answered and ready to submit.'
-              : 'Finish every question before submitting your quiz.'}
+            {answeredCount} of {questions.length} answered
           </div>
           <Button
             onClick={handleSubmit}

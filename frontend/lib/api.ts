@@ -18,6 +18,14 @@ type BackendUploadResponse = {
   filename: string;
   num_chunks: number;
   status: string;
+  summary: string;
+  word_count: number;
+};
+
+type BackendSummaryResponse = {
+  session_id: string;
+  summary: string;
+  word_count: number;
 };
 
 type BackendQuizQuestion = {
@@ -144,6 +152,8 @@ export async function uploadPdf(
       session_id: data.session_id,
       file_name: data.filename,
       status: data.status,
+      summary: data.summary,
+      word_count: data.word_count,
     };
   } catch (error) {
     if (error instanceof APIError) {
@@ -155,7 +165,12 @@ export async function uploadPdf(
 
 // Get Summary
 export async function getSummary(sessionId: string): Promise<SummaryResponse> {
-  return apiCall<SummaryResponse>(`/api/summary/${sessionId}`);
+  const data = await apiCall<BackendSummaryResponse>(`/api/summary/${sessionId}`);
+  return {
+    session_id: data.session_id,
+    summary: data.summary,
+    word_count: data.word_count,
+  };
 }
 
 // Get Quiz (without correct_answer field)
@@ -256,10 +271,13 @@ function getMockData(endpoint: string): unknown {
       session_id: 'mock-session-123',
       file_name: 'sample.pdf',
       status: 'processing',
+      summary: 'This is a mock summary.\n\n- It exists to keep the UI testable.\n- The backend returns a plain summary now.',
+      word_count: 18,
     },
-    '/api/session/mock-session-123/summary': {
+    '/api/summary/mock-session-123': {
       session_id: 'mock-session-123',
-      summary: 'This is a mock summary of the PDF content. Lorem ipsum dolor sit amet.',
+      summary: 'This is a mock summary of the PDF content.\n\n- The outline has been removed.\n- The frontend now shows a simple readable summary.',
+      word_count: 11,
     },
     '/api/session/mock-session-123/quiz': {
       session_id: 'mock-session-123',

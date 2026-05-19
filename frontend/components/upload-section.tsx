@@ -9,39 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
-  BarChart3,
-  FileCheck2,
-  FileText,
   Layers3,
   Loader2,
   Sparkles,
   Upload,
 } from 'lucide-react';
-
-const benefits = [
-  {
-    title: 'Precise summary',
-    description: 'Turn long PDFs into a concise, structured overview.',
-    icon: FileText,
-  },
-  {
-    title: 'Relevant quiz',
-    description: 'Generate questions aligned with the document content.',
-    icon: FileCheck2,
-  },
-  {
-    title: 'Performance review',
-    description: 'Rate summary quality and the usefulness of the quiz.',
-    icon: BarChart3,
-  },
-];
-
-const workflow = [
-  'Upload a PDF',
-  'Review the summary',
-  'Answer the quiz',
-  'Evaluate the output',
-];
 
 export function UploadSection() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +21,7 @@ export function UploadSection() {
   const [isUploading, setIsUploading] = useState(false);
   const [numQuestions, setNumQuestions] = useState('5');
 
-  const { setSessionData, setCurrentTab, setError } = useSession();
+  const { setSessionData, setCurrentTab, setError, setSummary } = useSession();
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -77,6 +49,8 @@ export function UploadSection() {
         created_at: new Date().toISOString(),
         num_questions: questions,
       });
+      setSummary(response.summary);
+      setError(null);
       setCurrentTab('summary');
     } catch (err) {
       setError(`Upload failed: ${(err as Error).message}`);
@@ -114,7 +88,7 @@ export function UploadSection() {
   };
 
   return (
-    <div className="grid flex-1 items-center gap-6 lg:grid-cols-[1.15fr_0.85fr] xl:gap-8">
+    <div className="flex flex-1 items-center justify-center">
       <section className="space-y-6">
         <div className="space-y-4">
           <Badge
@@ -258,61 +232,6 @@ export function UploadSection() {
           </div>
         </Card>
       </section>
-
-      <aside className="space-y-6">
-        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.35)] backdrop-blur">
-          <div className="border-b border-border/70 px-6 py-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              What you get
-            </p>
-            <h2 className="mt-1 text-xl font-semibold text-foreground">
-              A focused review workspace
-            </h2>
-          </div>
-
-          <div className="space-y-3 p-6">
-            {benefits.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.title}
-                  className="flex items-start gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-foreground">{item.title}</p>
-                    <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card className="border-border/70 bg-gradient-to-br from-primary/8 via-card to-secondary/10 p-6 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.35)]">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Workflow
-            </p>
-          </div>
-          <div className="mt-5 space-y-3">
-            {workflow.map((step, index) => (
-              <div
-                key={step}
-                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/75 px-4 py-3"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                  {index + 1}
-                </div>
-                <span className="text-sm font-medium text-foreground">{step}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </aside>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 from io import BytesIO
+import re
 
 from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
@@ -34,4 +35,11 @@ class PDFProcessor:
             raise HTTPException(status_code=400, detail="Unable to read PDF") from exc
         if not text:
             raise HTTPException(status_code=400, detail="PDF does not contain extractable text")
-        return text
+        return self._normalize_text(text)
+
+    def _normalize_text(self, text: str) -> str:
+        text = re.sub(r"\f", "\n", text)
+        text = re.sub(r"-\s*\n\s*(\w)", r"\1", text)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()

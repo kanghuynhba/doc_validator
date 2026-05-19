@@ -21,17 +21,18 @@ The API will be available at `http://127.0.0.1:8000`.
 
 ## Database
 
-The default `DATABASE_URL` uses SQLite for local development:
+The backend now expects MariaDB by default. Set these values in `.env`:
 
 ```txt
-sqlite:///./doc_validator.db
+DB_USERNAME=root
+DB_PASSWORD=your_password
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=doc_validator
+DB_CHARSET=utf8mb4
 ```
 
-For MariaDB, set:
-
-```txt
-mysql+pymysql://user:password@localhost:3306/doc_validator
-```
+`DATABASE_URL` is optional. If it is set, it overrides the individual fields above.
 
 Tables are created on startup by SQLAlchemy for this first version. Replace that with Alembic migrations when the schema stabilizes.
 

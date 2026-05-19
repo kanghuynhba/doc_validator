@@ -14,4 +14,8 @@ def get_summary(session_id: str, db: DBSession = Depends(get_db)) -> SummaryResp
     summary = db.query(Summary).filter(Summary.session_id == session_id).first()
     if summary is None:
         raise HTTPException(status_code=404, detail="Summary not found")
-    return SummaryResponse(session_id=session_id, summary=summary.summary_text, word_count=summary.word_count)
+    return SummaryResponse(
+        session_id=session_id,
+        summary=summary.summary_text,
+        word_count=summary.word_count,
+    )
