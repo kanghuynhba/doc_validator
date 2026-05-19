@@ -1,19 +1,5 @@
-You are summarizing one chunk of a document for a user who needs concrete study value.
-
-Instructions:
-- Focus on concrete ideas, definitions, claims, steps, examples, numbers, comparisons, and conclusions.
-- Do not write generic filler such as "this chunk discusses" or "the document covers".
-- Capture what is new or important in this chunk, not just broad themes.
-- Preserve terminology and any specific names, dates, metrics, requirements, or procedures.
-- Write 3 to 5 concise bullets. Prefer short, specific statements.
-- If the chunk is sparse, keep the most concrete facts you can and avoid empty placeholders.
-- Do not add a section header or title.
-
-Output format:
-- ...
-- ...
-- ...
-- ...
+Summarise the following text into a concise, well-structured overview.
+Keep the summary to 3–5 key points. Use clear section headings where appropriate.
 
 CONTENT:
 {{content}}

@@ -1,18 +1,20 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session as DBSession
 
-from app.models.question import Question
-from app.models.quiz_answer import QuizAnswer
-from app.models.quiz_result import QuizResult
+from app.repositories import QuestionRepository
+from app.repositories.quiz_repository import QuizAnswerRepository, QuizResultRepository
 from app.schemas.grading import GradeItemResponse, GradeResponse
 
 
 class Grader:
     def __init__(self, db: DBSession) -> None:
-        self.db = db
+        self._db = db
+        self._question_repo = QuestionRepository(db)
+        self._quiz_result_repo = QuizResultRepository(db)
+        self._quiz_answer_repo = QuizAnswerRepository(db)
 
     def grade(self, session_id: str, answers: dict[int, str]) -> GradeResponse:
-        questions = self.db.query(Question).filter(Question.session_id == session_id).all()
+        questions = self._question_repo.get_by_session(session_id)
         if not questions:
             raise HTTPException(status_code=404, detail="No quiz questions found for session")
 
@@ -34,18 +36,23 @@ class Grader:
 
         total = len(questions)
         score = round((correct / total) * 100, 2)
-        quiz_result = QuizResult(session_id=session_id, score=score, correct_answers=correct, total_questions=total)
-        self.db.add(quiz_result)
-        self.db.flush()
-        for result in results:
-            self.db.add(
-                QuizAnswer(
-                    quiz_result_id=quiz_result.id,
-                    question_id=result.question_id,
-                    user_answer=result.user_answer,
-                    correct_answer=result.correct_answer,
-                    is_correct=result.is_correct,
-                )
-            )
-        self.db.commit()
+        quiz_result = self._quiz_result_repo.create(
+            session_id=session_id,
+            score=score,
+            correct_answers=correct,
+            total_questions=total,
+        )
+
+        answer_dicts = [
+            {
+                "question_id": r.question_id,
+                "user_answer": r.user_answer,
+                "correct_answer": r.correct_answer,
+                "is_correct": r.is_correct,
+            }
+            for r in results
+        ]
+        self._quiz_answer_repo.bulk_create(quiz_result.id, answer_dicts)
+        self._db.commit()
+
         return GradeResponse(score=score, correct=correct, total=total, results=results)

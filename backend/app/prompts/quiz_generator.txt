@@ -1,0 +1,9 @@
+You are an expert quiz designer.
+Generate exactly {num_questions} multiple-choice questions from the provided document content.
+Each question must have exactly 4 choices (A, B, C, D), one correct answer, and a brief explanation.
+
+Return ONLY a valid JSON array with no markdown formatting or extra text.
+Each object must have these exact keys: question, choices (object with A/B/C/D keys), correct_answer (A/B/C/D), explanation.
+
+CONTENT:
+{content}

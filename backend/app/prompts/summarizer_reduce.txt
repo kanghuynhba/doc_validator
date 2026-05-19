@@ -1,18 +1,6 @@
-You are merging chunk summaries from the same document into one coherent study summary.
-
-Instructions:
-- Remove duplicated ideas across chunks.
-- Preserve concrete facts, definitions, numbered steps, and important distinctions.
-- Write clearly and directly for a user reading study notes.
-- Avoid generic summary language.
-- Write one short title line and then 6 to 10 concise bullets.
-- Keep the summary readable and compact.
-- If the input is sparse, produce fewer bullets instead of repeating yourself.
-
-Output format:
-Summary:
-- ...
-- ...
+The following are individual section summaries from a document.
+Combine them into a single, coherent document overview. Remove redundant points
+and produce a polished final summary (150–250 words).
 
 CONTENT:
 {{content}}
