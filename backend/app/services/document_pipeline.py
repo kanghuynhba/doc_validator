@@ -10,7 +10,6 @@ from app.services.pdf_processor import PDFProcessor
 from app.services.quiz_generator import QuizGenerator
 from app.services.quiz_validator import QuizValidator
 from app.services.summarizer import Summarizer
-from app.services.text_chunker import TextChunker
 
 
 class DocumentPipelineService:
@@ -18,14 +17,13 @@ class DocumentPipelineService:
         self.db = db
         self.settings = get_settings()
         self.pdf_processor = PDFProcessor()
-        self.text_chunker = TextChunker()
         self.summarizer = Summarizer()
         self.quiz_generator = QuizGenerator()
         self.quiz_validator = QuizValidator()
 
     async def process_pdf(self, file: UploadFile, num_questions: int = 10) -> UploadResponse:
         text = await self.pdf_processor.extract_text(file)
-        chunks = self.text_chunker.chunk_text(
+        chunks = self.summarizer.chunk_document(
             text,
             chunk_size=self.settings.chunk_size,
             overlap=self.settings.chunk_overlap,
@@ -43,7 +41,8 @@ class DocumentPipelineService:
         self.db.flush()
 
         try:
-            final_summary = self.summarizer.summarize_document(chunks)
+            chunk_summaries = self.summarizer.summarize_chunks(chunks)
+            final_summary = self.summarizer.reduce_summaries(chunk_summaries)
             self.db.add(
                 Summary(
                     session_id=session.id,

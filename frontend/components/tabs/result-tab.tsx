@@ -6,7 +6,9 @@ import { evaluateLLM } from '@/lib/api';
 import { StarRating } from '../star-rating';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, Loader2, Target, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function ResultTab() {
   const {
@@ -19,8 +21,6 @@ export function ResultTab() {
     evaluationResult,
     setEvaluationResult,
     sessionData,
-    isLoading,
-    setIsLoading,
     setError,
   } = useSession();
 
@@ -28,7 +28,7 @@ export function ResultTab() {
 
   if (!gradeResult) {
     return (
-      <Card className="p-6 text-center">
+      <Card className="border-border/70 bg-card/90 p-6 text-center shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
         <p className="text-muted-foreground">No quiz results available</p>
       </Card>
     );
@@ -37,12 +37,12 @@ export function ResultTab() {
   const percentage = gradeResult.percentage;
   const performanceColor =
     percentage >= 85
-      ? 'text-green-600'
+      ? 'text-emerald-600'
       : percentage >= 70
-      ? 'text-blue-600'
+      ? 'text-sky-600'
       : percentage >= 50
-      ? 'text-yellow-600'
-      : 'text-red-600';
+      ? 'text-amber-600'
+      : 'text-rose-600';
 
   const canSubmitEval =
     summaryRating !== null &&
@@ -74,173 +74,207 @@ export function ResultTab() {
 
   return (
     <div className="space-y-6">
-      {/* Score Card */}
-      <Card className="p-8 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">Quiz Complete!</h2>
-          <div className={`text-6xl font-bold ${performanceColor}`}>
-            {gradeResult.percentage.toFixed(1)}%
+      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
+        <div className="bg-gradient-to-br from-primary/8 via-background to-secondary/10 px-6 py-8 sm:px-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="space-y-3">
+              <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/5 text-primary">
+                <Target className="mr-2 h-3.5 w-3.5" />
+                Results
+              </Badge>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                Quiz complete
+              </h2>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                Review your score, check each answer, then rate the summary and quiz so the
+                model evaluation can be generated.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-border/70 bg-background/85 px-8 py-6 text-center shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Score
+              </p>
+              <div className={cn('mt-2 text-5xl font-semibold tracking-tight sm:text-6xl', performanceColor)}>
+                {percentage.toFixed(1)}%
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {gradeResult.score} of {gradeResult.total_questions} correct
+              </p>
+            </div>
           </div>
-          <p className="text-lg text-foreground">
-            {gradeResult.score} out of {gradeResult.total_questions} correct
-          </p>
         </div>
       </Card>
 
-      {/* Questions Review */}
       <div className="space-y-4">
-        <h3 className="text-xl font-semibold text-foreground">Review Your Answers</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-foreground">
+          Review your answers
+        </h3>
         {gradeResult.questions.map((q, index) => (
-          <Card key={q.question_id} className="p-4">
-            <div className="flex items-start gap-3">
+          <Card
+            key={q.question_id}
+            className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]"
+          >
+            <div className="flex items-start gap-4 border-b border-border/70 bg-muted/20 px-6 py-5">
               {q.is_correct ? (
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
+                <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
               )}
-              <div className="flex-1">
-                <h4 className="font-semibold text-foreground mb-2">
-                  {index + 1}. {q.question}
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-medium text-foreground">Your answer: </span>
-                    <span className={q.is_correct ? 'text-green-600' : 'text-red-600'}>
-                      {q.options[q.user_answer]}
-                    </span>
-                  </div>
-                  {!q.is_correct && (
-                    <div>
-                      <span className="font-medium text-foreground">Correct answer: </span>
-                      <span className="text-green-600">{q.options[q.correct_answer]}</span>
-                    </div>
-                  )}
-                  {q.explanation && (
-                    <div className="pt-2 text-muted-foreground italic border-t border-border">
-                      {q.explanation}
-                    </div>
-                  )}
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="rounded-full">
+                    {index + 1}
+                  </Badge>
+                  <h4 className="text-base font-semibold leading-7 text-foreground sm:text-lg">
+                    {q.question}
+                  </h4>
                 </div>
+
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Your answer
+                    </p>
+                    <p className={cn('mt-2 font-medium', q.is_correct ? 'text-emerald-600' : 'text-rose-600')}>
+                      {q.options[q.user_answer]}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Correct answer
+                    </p>
+                    <p className="mt-2 font-medium text-emerald-600">
+                      {q.options[q.correct_answer]}
+                    </p>
+                  </div>
+                </div>
+
+                {q.explanation && (
+                  <div className="rounded-2xl border border-border/70 bg-muted/25 p-4 text-sm leading-6 text-muted-foreground">
+                    {q.explanation}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      {/* Quiz Rating Section */}
       {!evaluationResult && (
-        <Card className="p-6 border-primary/20">
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold text-foreground">How useful was this quiz?</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Rate the quality and relevance of the questions
-              </p>
-            </div>
+        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
+          <div className="border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-secondary/5 px-6 py-5">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">
+              Rate the summary and quiz
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Your ratings feed into the learning effectiveness score.
+            </p>
+          </div>
 
+          <div className="space-y-6 px-6 py-6">
             <StarRating
               value={quizRating || 0}
               onChange={setQuizRating}
               size="lg"
+              label="Quiz quality"
             />
 
-            {/* Feedback Section */}
-            <div className="pt-4 border-t border-border">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Optional Feedback
-              </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Optional feedback</label>
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Share any feedback about the summary or quiz..."
-                className="w-full p-3 text-sm border border-input rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={3}
+                placeholder="Add a short note about the summary, quiz, or overall usefulness..."
+                className="min-h-28 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                rows={4}
               />
             </div>
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmitEvaluation}
-              disabled={!canSubmitEval}
-              size="lg"
-              className="w-full"
-            >
-              {submittingEval && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {submittingEval ? 'Submitting...' : 'Submit Evaluation'}
-            </Button>
-            {summaryRating === null && (
-              <p className="text-sm text-muted-foreground text-center">
-                Rate the summary before submitting the evaluation.
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                {summaryRating === null
+                  ? 'Rate the summary before submitting the evaluation.'
+                  : 'Submit when you are ready to generate the effectiveness score.'}
               </p>
-            )}
+              <Button
+                onClick={handleSubmitEvaluation}
+                disabled={!canSubmitEval}
+                size="lg"
+                className="rounded-full px-6"
+              >
+                {submittingEval && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {submittingEval ? 'Submitting...' : 'Submit evaluation'}
+              </Button>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* LLM Performance Card */}
       {evaluationResult && (
-        <Card className="p-6 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 border-primary/20">
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-1">
-                LLM Learning Effectiveness
+        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
+          <div className="bg-gradient-to-br from-primary/8 via-background to-secondary/10 px-6 py-6">
+            <div className="space-y-2">
+              <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/5 text-primary">
+                Performance
+              </Badge>
+              <h3 className="text-xl font-semibold tracking-tight text-foreground">
+                Learning effectiveness score
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Combined evaluation of your learning experience
+              <p className="text-sm leading-6 text-muted-foreground">
+                Combined evaluation of summary quality, quiz quality, and learning outcome.
               </p>
             </div>
+          </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-background/50 rounded-md border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Summary Quality
-                </p>
-                <p className="text-2xl font-bold text-primary">
-                  {Math.round(
-                    (evaluationResult.summary_rating / 5) * 100
-                  )}%
-                </p>
-              </div>
-              <div className="text-center p-3 bg-background/50 rounded-md border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Quiz Quality
-                </p>
-                <p className="text-2xl font-bold text-accent">
-                  {Math.round((evaluationResult.quiz_rating / 5) * 100)}%
-                </p>
-              </div>
-              <div className="text-center p-3 bg-background/50 rounded-md border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Learning Outcome
-                </p>
-                <p className="text-2xl font-bold text-secondary">
-                  {Math.round(evaluationResult.quiz_score)}%
-                </p>
-              </div>
+          <div className="space-y-6 px-6 py-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MetricCard
+                label="Summary quality"
+                value={`${Math.round((evaluationResult.summary_rating / 5) * 100)}%`}
+              />
+              <MetricCard
+                label="Quiz quality"
+                value={`${Math.round((evaluationResult.quiz_rating / 5) * 100)}%`}
+              />
+              <MetricCard
+                label="Learning outcome"
+                value={`${Math.round(evaluationResult.quiz_score)}%`}
+              />
             </div>
 
-            {/* Final Score */}
-            <div className="text-center pt-4 border-t border-border">
-              <p className="text-sm text-muted-foreground mb-2">LLM Performance Score</p>
-              <p className="text-5xl font-bold text-primary mb-2">
-                {Math.round(evaluationResult.llm_performance_score)}/100
+            <div className="rounded-3xl border border-border/70 bg-muted/25 p-6 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Final score
               </p>
-              <p className="text-lg font-semibold text-foreground">
+              <p className="mt-3 text-5xl font-semibold tracking-tight text-primary sm:text-6xl">
+                {Math.round(evaluationResult.llm_performance_score)}
+              </p>
+              <p className="mt-2 text-lg font-medium text-foreground">
                 {evaluationResult.performance_label}
               </p>
             </div>
 
-            {/* Formula Explanation */}
-            <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-              <p className="font-medium text-foreground mb-2">Score Formula</p>
-              <p>
-                0.4 × Summary Quality + 0.3 × Quiz Quality + 0.3 × Learning Outcome
-              </p>
-            </div>
+            {evaluationResult.feedback && (
+              <div className="rounded-3xl border border-border/70 bg-background/70 p-5">
+                <p className="text-sm font-semibold text-foreground">Your feedback</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                  {evaluationResult.feedback}
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-background/80 p-5 text-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
     </div>
   );
 }

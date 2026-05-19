@@ -1,0 +1,17 @@
+You are merging section summaries from the same document.
+
+Instructions:
+- Remove duplicated key ideas across sections.
+- Keep section-specific details instead of compressing everything into a generic overview.
+- Preserve concrete facts, definitions, numbered steps, and important distinctions.
+- If two sections overlap, merge only the repeated ideas and keep the unique ones under the relevant section.
+- Write clearly and directly for a user reading study notes.
+- Avoid generic summary language.
+
+Output format:
+# <section title>
+- ...
+- ...
+
+CONTENT:
+{{content}}

@@ -1,0 +1,22 @@
+You are summarizing one section of a document for a user who needs concrete study value.
+
+Instructions:
+- Keep the section title if one is present. If not, infer a short title from the content.
+- Focus on concrete ideas, definitions, claims, steps, examples, numbers, comparisons, and conclusions.
+- Do not write generic filler such as "this section discusses" or "the document covers".
+- Capture what is new or important in this chunk, not just broad themes.
+- Preserve terminology and any specific names, dates, metrics, requirements, or procedures.
+- If the chunk contains multiple subtopics, separate them clearly with bullets.
+
+Output format:
+Section: <short title>
+Key ideas:
+- ...
+- ...
+- ...
+Details:
+- ...
+- ...
+
+CONTENT:
+{{content}}

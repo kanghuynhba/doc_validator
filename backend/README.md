@@ -49,6 +49,8 @@ Tables are created on startup by SQLAlchemy for this first version. Replace that
 
 ## LLM Behavior
 
-If `OPENAI_API_KEY` is set, the backend calls OpenAI through `LLMClient`.
+If `GITHUB_COMPLETION_API_KEY` and `GITHUB_ENDPOINT` are set, the backend calls GitHub Models through the OpenAI-compatible client.
+
+If `OPENAI_API_KEY` is set instead, the backend calls OpenAI through `LLMClient`.
 
 If no key is set, it uses deterministic fallback summary and quiz generation. This keeps the pipeline testable without network access or paid API credentials.

@@ -3,8 +3,9 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'PDF Summarizer & Quiz - AI Learning Assistant',
-  description: 'Upload PDFs, get intelligent summaries, take interactive quizzes, and evaluate LLM performance.',
+  title: 'Document Intelligence Studio',
+  description:
+    'Upload PDFs, generate concise summaries, take adaptive quizzes, and review model performance in a clean workspace.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -32,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-background">
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased text-foreground bg-background selection:bg-primary/20 selection:text-foreground">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

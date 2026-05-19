@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./doc_validator.db"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
+    github_endpoint: str | None = None
+    github_completion_api_key: str | None = None
+    generative_model_name: str | None = None
     llm_temperature: float = 0.2
     max_upload_mb: int = 20
     chunk_size: int = 1000
