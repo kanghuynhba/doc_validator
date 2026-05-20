@@ -1,101 +1,78 @@
-"""Async LLM client wrapping OpenAI-compatible endpoints.
-
-Supports both OpenAI and GitHub Models endpoints.  Every prompt sent and
-response received is traced through the structured logger so the console shows
-the exact flow of a document through the pipeline.
-"""
+"""Async LLM client backed by LiteLLM."""
 
 from __future__ import annotations
 
 import asyncio
-import httpx
 import json
+import os
 import time
 from typing import Any
 
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
+import litellm
+
 from app.config import get_settings
-from app.logging_config import get_logger, log_prompt, log_response
+from app.logging_config import get_logger
 from app.utils.text_utils import deduplicate_lines, normalize_output
 
-# Number of retry attempts before falling back to deterministic text generation.
 _MAX_RETRIES = 3
-# Initial backoff delay in seconds before the first retry (doubles each retry).
 _INITIAL_BACKOFF = 2.0
 
 
-class AsyncLLMClient:
-    """Async, logging-aware LLM client with OpenAI-compatible API support."""
+litellm.suppress_debug_info = True
+
+
+class LiteLLMClient:
+    """Async, logging-aware LLM client using LiteLLM's completion API."""
 
     def __init__(self) -> None:
         self._settings = get_settings()
-        self._client: httpx.AsyncClient | None = None
         self._log = get_logger(__name__)
-
-    # ------------------------------------------------------------------ #
-    # Internal helpers
-    # ------------------------------------------------------------------ #
-    def _build_client(self) -> httpx.AsyncClient:
-        api_key = self._settings.github_completion_api_key or self._settings.openai_api_key
-        base_url = self._settings.github_endpoint or "http://127.0.0.1:8081/v1"
-
-        timeout = httpx.Timeout(180.0, connect=10.0)
-        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-
-        return httpx.AsyncClient(base_url=base_url, timeout=timeout, headers=headers)
 
     @property
     def model_name(self) -> str:
         return self._settings.generative_model_name or self._settings.openai_model
 
-    # ------------------------------------------------------------------ #
-    # Core API
-    # ------------------------------------------------------------------ #
+    def _litellm_model_name(self) -> str:
+        if self.model_name.startswith("openai/"):
+            return self.model_name
+        return f"openai/{self.model_name}"
+
+    def _build_completion_args(self, prompt: str, max_tokens: int) -> dict[str, Any]:
+        return {
+            "model": self._litellm_model_name(),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self._settings.llm_temperature,
+            "max_tokens": max_tokens,
+            "timeout": 180.0,
+            "api_base": self._settings.github_endpoint or "http://127.0.0.1:8081/v1",
+            "api_key": self._settings.github_completion_api_key or self._settings.openai_api_key or "local",
+        }
+
+    @staticmethod
+    def _response_content(response: Any) -> str:
+        choices = getattr(response, "choices", None)
+        if choices and len(choices) > 0:
+            message = getattr(choices[0], "message", None)
+            content = getattr(message, "content", "") if message else ""
+            if content:
+                return str(content)
+
+        if hasattr(response, "model_dump"):
+            raw = response.model_dump()
+        elif isinstance(response, dict):
+            raw = response
+        else:
+            raw = {}
+
+        return str(raw.get("choices", [{}])[0].get("message", {}).get("content", ""))
+
     async def complete(self, prompt: str, *, max_tokens: int = 1200, chunk_index: int | None = None) -> str:
-        log_prompt(self._log, chunk_index, prompt)
-        start = time.perf_counter()
-
-        if self._client is None:
-            self._client = self._build_client()
-
         last_exception: Exception | None = None
         for attempt in range(_MAX_RETRIES):
             try:
-                if self._client is None:
-                    raise RuntimeError("httpx client not initialised")
-                response = await self._client.post(
-                    "/chat/completions",
-                    json={
-                        "model": self.model_name,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": self._settings.llm_temperature,
-                        "max_tokens": max_tokens,
-                    },
-                )
-
-                # 429 Rate-Limited: retry with backoff instead of immediately falling back.
-                if response.status_code == 429:
-                    response.close()
-                    wait = _INITIAL_BACKOFF * (2 ** attempt)
-                    self._log.warning(
-                        "LLM rate-limited (429), retry %d/%d in %.1fs: chunk=%s",
-                        attempt + 1, _MAX_RETRIES, wait, chunk_index,
-                    )
-                    await asyncio.sleep(wait)
-                    continue
-
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 429:
-                    response.close()
-                    wait = _INITIAL_BACKOFF * (2 ** attempt)
-                    self._log.warning(
-                        "LLM rate-limited (429), retry %d/%d in %.1fs: chunk=%s",
-                        attempt + 1, _MAX_RETRIES, wait, chunk_index,
-                    )
-                    await asyncio.sleep(wait)
-                    continue
-                raise
-
+                response = await litellm.acompletion(**self._build_completion_args(prompt, max_tokens))
             except Exception as exc:
                 last_exception = exc
                 wait = _INITIAL_BACKOFF * (2 ** attempt)
@@ -106,23 +83,13 @@ class AsyncLLMClient:
                 await asyncio.sleep(wait)
                 continue
 
-            # Success path.
-            elapsed = time.perf_counter() - start
-            raw = response.json()
-            content: str = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
-            result = content.strip()
-            log_response(self._log, chunk_index, result, elapsed)
-            return result
+            return self._response_content(response).strip()
 
-        # All retries exhausted — fall back to deterministic generation.
-        elapsed = time.perf_counter() - start
         self._log.warning(
             "LLM request failed after %d retries, using fallback: %s  chunk=%s",
             _MAX_RETRIES, last_exception, chunk_index,
         )
-        result = self._fallback_text(prompt)
-        log_response(self._log, chunk_index, result, elapsed)
-        return result
+        return self._fallback_text(prompt)
 
     async def complete_json(
         self, prompt: str, *, max_tokens: int = 2000, chunk_index: int | None = None
@@ -141,9 +108,6 @@ class AsyncLLMClient:
                 return json.loads(text[start_pos : end_pos + 1])
             return self._fallback_quiz(prompt)
 
-    # ------------------------------------------------------------------ #
-    # Fallbacks (deterministic, no LLM required)
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _fallback_text(prompt: str) -> str:
         source = prompt.split("CONTENT:", 1)[-1].strip() if "CONTENT:" in prompt else prompt
@@ -198,6 +162,4 @@ class AsyncLLMClient:
         return questions
 
     async def close(self) -> None:
-        if self._client is not None:
-            await self._client.aclose()
-            self._client = None
+        return None

@@ -8,17 +8,17 @@ from sqlalchemy.orm import Session as DBSession
 from app.dependencies import get_db
 from app.schemas.upload import UploadResponse
 from app.services.document_pipeline import DocumentPipelineService
-from app.services.llm_client import AsyncLLMClient
+from app.services.lite_llm_client import LiteLLMClient
 
 
 # Singleton — created once per worker, reused across requests.
-_llm_client: AsyncLLMClient | None = None
+_llm_client: LiteLLMClient | None = None
 
 
-def get_llm_client() -> AsyncLLMClient:
+def get_llm_client() -> LiteLLMClient:
     global _llm_client
     if _llm_client is None:
-        _llm_client = AsyncLLMClient()
+        _llm_client = LiteLLMClient()
     return _llm_client
 
 
@@ -37,7 +37,7 @@ async def upload_pdf(
     file: UploadFile = File(...),
     num_questions: int = Form(10),
     db: DBSession = Depends(get_db),
-    llm_client: AsyncLLMClient = Depends(get_llm_client),
+    llm_client: LiteLLMClient = Depends(get_llm_client),
 ) -> UploadResponse:
     service = DocumentPipelineService(db, llm_client=llm_client)
     return await service.process_pdf(file, num_questions=num_questions)
