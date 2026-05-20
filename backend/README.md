@@ -21,18 +21,13 @@ The API will be available at `http://127.0.0.1:8000`.
 
 ## Database
 
-The backend now expects MariaDB by default. Set these values in `.env`:
+The backend uses SQLite by default:
 
 ```txt
-DB_USERNAME=root
-DB_PASSWORD=your_password
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=doc_validator
-DB_CHARSET=utf8mb4
+DATABASE_URL=sqlite:///./doc_validator.db
 ```
 
-`DATABASE_URL` is optional. If it is set, it overrides the individual fields above.
+The database file is created in the backend working directory when the app starts. You can still set `DATABASE_URL` to any SQLAlchemy-compatible DSN if you need a different database.
 
 Tables are created on startup by SQLAlchemy for this first version. Replace that with Alembic migrations when the schema stabilizes.
 
@@ -45,6 +40,7 @@ Tables are created on startup by SQLAlchemy for this first version. Replace that
 - `POST /api/grade/{session_id}`
 - `POST /api/evaluate-llm/{session_id}`
 - `GET /api/analytics/overview`
+- `GET /api/analytics/linear-regression`
 - `POST /api/analytics/train/linear`
 - `POST /api/analytics/train/logistic`
 

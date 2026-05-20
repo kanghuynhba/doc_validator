@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useSession } from '@/lib/session-context';
 import { getSummary } from '@/lib/api';
 import { SummarySkeleton } from '../skeletons';
@@ -9,11 +9,166 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Sparkles } from 'lucide-react';
 
-function toLines(summary: string) {
-  return summary
+function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    const key = `${keyPrefix}-${match.index}`;
+
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push(
+        <strong key={key} className="font-semibold text-foreground">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      parts.push(
+        <code key={key} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em]">
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      parts.push(
+        <em key={key} className="italic">
+          {token.slice(1, -1)}
+        </em>
+      );
+    } else {
+      const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
+      if (linkMatch && /^https?:\/\//.test(linkMatch[2])) {
+        parts.push(
+          <a
+            key={key}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-primary underline underline-offset-4"
+          >
+            {linkMatch[1]}
+          </a>
+        );
+      } else {
+        parts.push(token);
+      }
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
+function cleanMarkdownLine(line: string) {
+  return line.replace(/[●•]/g, '').trim();
+}
+
+function MarkdownSummary({ content }: { content: string }) {
+  const blocks: ReactNode[] = [];
+  const paragraphLines: string[] = [];
+  let listItems: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) return;
+    const text = paragraphLines.join(' ').trim();
+    paragraphLines.length = 0;
+    if (!text) return;
+
+    blocks.push(
+      <p key={`p-${blocks.length}`} className="text-sm leading-7 text-foreground">
+        {renderInlineMarkdown(text, `p-${blocks.length}`)}
+      </p>
+    );
+  };
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    const items = listItems;
+    listItems = [];
+
+    blocks.push(
+      <ul key={`list-${blocks.length}`} className="space-y-2">
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`} className="text-sm leading-7 text-foreground">
+            {renderInlineMarkdown(item, `li-${blocks.length}-${index}`)}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  content
+    .replace(/\r\n/g, '\n')
     .split('\n')
-    .map((line) => line.trim().replace(/●/g, ''))
-    .filter(Boolean);
+    .forEach((rawLine) => {
+      const line = rawLine.trim();
+
+      if (!line) {
+        flushParagraph();
+        flushList();
+        return;
+      }
+
+      const heading = /^(#{1,4})\s+(.+)$/.exec(line);
+      if (heading) {
+        flushParagraph();
+        flushList();
+        const level = heading[1].length;
+        const headingText = cleanMarkdownLine(heading[2]);
+        const className =
+          level === 1
+            ? 'text-xl font-semibold leading-7 text-foreground'
+            : 'text-base font-semibold leading-7 text-foreground';
+
+        blocks.push(
+          <h3 key={`h-${blocks.length}`} className={className}>
+            {renderInlineMarkdown(headingText, `h-${blocks.length}`)}
+          </h3>
+        );
+        return;
+      }
+
+      const listItem = /^(?:[-*+]|\d+[.)]|[●•])\s+(.+)$/.exec(line);
+      if (listItem) {
+        flushParagraph();
+        listItems.push(cleanMarkdownLine(listItem[1]));
+        return;
+      }
+
+      const quote = /^>\s+(.+)$/.exec(line);
+      if (quote) {
+        flushParagraph();
+        flushList();
+        const quoteText = cleanMarkdownLine(quote[1]);
+        blocks.push(
+          <blockquote
+            key={`quote-${blocks.length}`}
+            className="border-l-2 border-primary/40 pl-4 text-sm leading-7 text-muted-foreground"
+          >
+            {renderInlineMarkdown(quoteText, `quote-${blocks.length}`)}
+          </blockquote>
+        );
+        return;
+      }
+
+      paragraphLines.push(cleanMarkdownLine(line));
+    });
+
+  flushParagraph();
+  flushList();
+
+  return <div className="space-y-4">{blocks}</div>;
 }
 
 export function SummaryTab() {
@@ -68,8 +223,6 @@ export function SummaryTab() {
     );
   }
 
-  const lines = toLines(summary);
-
   return (
     <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)]">
       <div className="border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-secondary/5 px-6 py-5">
@@ -92,31 +245,7 @@ export function SummaryTab() {
 
       <div className="space-y-6 px-6 py-6">
         <div className="rounded-3xl border border-border/70 bg-muted/20 p-5 sm:p-6">
-          <div className="space-y-3">
-            {lines.map((line, index) => {
-              const isBullet = /^[-•●]\s+/.test(line);
-              const cleanLine = line.replace(/^[-•●]\s+/, '').trim();
-
-              if (!cleanLine) {
-                return null;
-              }
-
-              if (isBullet) {
-                return (
-                  <div key={`${line}-${index}`} className="flex gap-3 text-sm leading-7 text-foreground">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    <span>{cleanLine}</span>
-                  </div>
-                );
-              }
-
-              return (
-                <p key={`${line}-${index}`} className="text-sm leading-7 text-foreground">
-                  {cleanLine}
-                </p>
-              );
-            })}
-          </div>
+          <MarkdownSummary content={summary} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">

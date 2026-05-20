@@ -10,6 +10,25 @@ class AnalyticsOverviewResponse(BaseModel):
     label_distribution: dict[str, int]
 
 
+class LinearRegressionPoint(BaseModel):
+    session_id: str
+    file_name: str
+    predicted_score: float
+    actual_score: float
+
+
+class LinearRegressionLinePoint(BaseModel):
+    predicted_score: float
+    ideal_score: float
+
+
+class LinearRegressionAnalysisResponse(BaseModel):
+    sample_count: int
+    r2_score: float | None
+    points: list[LinearRegressionPoint]
+    line: list[LinearRegressionLinePoint]
+
+
 class MLModelRunResponse(BaseModel):
     id: int
     model_type: str

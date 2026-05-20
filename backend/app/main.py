@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import create_db_and_tables
 from app.logging_config import configure_logging
-from app.routes import analytics, evaluation, grading, health, quiz, summary, upload
+from app.routes import analytics, evaluation, grading, health, history, quiz, summary, upload
 from app.routes.upload import shutdown_llm_client
 
 
@@ -38,3 +38,4 @@ app.include_router(quiz.router, prefix=settings.api_prefix)
 app.include_router(grading.router, prefix=settings.api_prefix)
 app.include_router(evaluation.router, prefix=settings.api_prefix)
 app.include_router(analytics.router, prefix=settings.api_prefix)
+app.include_router(history.router, prefix=settings.api_prefix)

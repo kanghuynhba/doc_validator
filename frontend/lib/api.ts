@@ -6,8 +6,10 @@ import {
   EvaluationRatings,
   EvaluationResponse,
   AnalyticsData,
+  LinearRegressionAnalysis,
   HistoryEntry,
 } from './types';
+import { normalizeUtcTimestamp } from './utils';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
@@ -109,6 +111,10 @@ async function apiCall<T>(
       );
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return await response.json() as T;
   } catch (error) {
     if (error instanceof APIError) {
@@ -128,7 +134,7 @@ export async function uploadPdf(
   formData.append('num_questions', numQuestions.toString());
 
   const url = `${API_BASE_URL}/api/upload`;
-  
+
   if (USE_MOCK_API) {
     return getMockData('/api/upload') as UploadResponse;
   }
@@ -261,7 +267,19 @@ export async function getAnalytics(): Promise<AnalyticsData> {
 
 // Get History
 export async function getHistory(): Promise<HistoryEntry[]> {
-  return apiCall<HistoryEntry[]>('/api/history');
+  const history = await apiCall<HistoryEntry[]>('/api/history');
+  return history.map((entry) => ({
+    ...entry,
+    created_at: normalizeUtcTimestamp(entry.created_at),
+  }));
+}
+
+export async function getLinearRegressionAnalysis(): Promise<LinearRegressionAnalysis> {
+  return apiCall<LinearRegressionAnalysis>('/api/analytics/linear-regression');
+}
+
+export async function deleteDocument(sessionId: string): Promise<void> {
+  await apiCall<void>(`/api/history/${sessionId}`, 'DELETE');
 }
 
 // Mock Data (only used if NEXT_PUBLIC_USE_MOCK_API=true)
@@ -302,15 +320,45 @@ function getMockData(endpoint: string): unknown {
       average_llm_performance_score: 85,
       top_performance_sessions: [],
     },
+    '/api/analytics/linear-regression': {
+      sample_count: 3,
+      r2_score: 0.92,
+      points: [
+        {
+          session_id: 'session-1',
+          file_name: 'document.pdf',
+          predicted_score: 72,
+          actual_score: 75,
+        },
+        {
+          session_id: 'session-2',
+          file_name: 'notes.pdf',
+          predicted_score: 83,
+          actual_score: 81,
+        },
+        {
+          session_id: 'session-3',
+          file_name: 'report.pdf',
+          predicted_score: 91,
+          actual_score: 94,
+        },
+      ],
+      line: [
+        { predicted_score: 72, ideal_score: 72 },
+        { predicted_score: 94, ideal_score: 94 },
+      ],
+    },
     '/api/history': [
       {
         session_id: 'session-1',
         file_name: 'document.pdf',
         created_at: '2024-05-15T10:30:00Z',
-        summary_rating: 5,
-        quiz_rating: 4,
-        quiz_score: 85,
-        llm_performance_score: 88,
+        status: 'completed',
+        num_questions: 5,
+        summary_rating: null,
+        quiz_rating: null,
+        quiz_score: null,
+        llm_performance_score: null,
       },
     ],
   };

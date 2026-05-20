@@ -88,6 +88,25 @@ export interface AnalyticsData {
   top_performance_sessions: SessionSummary[];
 }
 
+export interface LinearRegressionPoint {
+  session_id: string;
+  file_name: string;
+  predicted_score: number;
+  actual_score: number;
+}
+
+export interface LinearRegressionLinePoint {
+  predicted_score: number;
+  ideal_score: number;
+}
+
+export interface LinearRegressionAnalysis {
+  sample_count: number;
+  r2_score: number | null;
+  points: LinearRegressionPoint[];
+  line: LinearRegressionLinePoint[];
+}
+
 export interface SessionSummary {
   session_id: string;
   file_name: string;
@@ -100,10 +119,12 @@ export interface HistoryEntry {
   session_id: string;
   file_name: string;
   created_at: string;
-  summary_rating: number;
-  quiz_rating: number;
-  quiz_score: number;
-  llm_performance_score: number;
+  status?: string;
+  num_questions?: number;
+  summary_rating?: number | null;
+  quiz_rating?: number | null;
+  quiz_score?: number | null;
+  llm_performance_score?: number | null;
 }
 
 // Component Props

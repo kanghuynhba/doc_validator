@@ -1,7 +1,31 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { SessionData, GradeResponse, EvaluationResponse, HistoryEntry } from './types';
+import { normalizeUtcTimestamp } from './utils';
+
+const SESSION_STORAGE_KEY = 'doc-validator-session';
+
+type PersistedSessionState = {
+  sessionData: SessionData | null;
+  currentTab: string;
+  summary: string | null;
+};
+
+function loadPersistedSession(): PersistedSessionState | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as PersistedSessionState : null;
+    if (parsed?.sessionData) {
+      parsed.sessionData.created_at = normalizeUtcTimestamp(parsed.sessionData.created_at);
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 interface SessionContextType {
   // Current document workspace
@@ -40,6 +64,8 @@ interface SessionContextType {
   setEvaluationResult: (result: EvaluationResponse | null) => void;
   
   // UI state
+  isSessionRestored: boolean;
+
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   
@@ -68,8 +94,33 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSessionRestored, setIsSessionRestored] = useState(false);
+
+  useEffect(() => {
+    const persistedSession = loadPersistedSession();
+    if (persistedSession) {
+      setSessionData(persistedSession.sessionData);
+      setCurrentTab(persistedSession.currentTab);
+      setSummary(persistedSession.summary);
+    }
+    setIsSessionRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isSessionRestored) return;
+
+    window.localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        sessionData,
+        currentTab,
+        summary,
+      })
+    );
+  }, [isSessionRestored, sessionData, currentTab, summary]);
 
   const clearSession = useCallback(() => {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
     setSessionData(null);
     setCurrentTab('summary');
     setSummary(null);
@@ -84,6 +135,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const goToAnalytics = useCallback(() => {
     setSessionData(null);
+    setSummary(null);
     setCurrentTab('analytics');
   }, []);
 
@@ -108,6 +160,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setGradeResult,
     evaluationResult,
     setEvaluationResult,
+    isSessionRestored,
     isLoading,
     setIsLoading,
     error,

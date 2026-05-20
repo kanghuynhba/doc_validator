@@ -1,27 +1,59 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/session-context';
-import { uploadPdf } from '@/lib/api';
+import { deleteDocument, getHistory, uploadPdf } from '@/lib/api';
+import type { HistoryEntry } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 import {
-  Layers3,
+  BarChart3,
+  FileText,
   Loader2,
-  Sparkles,
+  RefreshCw,
+  Trash2,
   Upload,
 } from 'lucide-react';
 
 export function UploadSection() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [numQuestions, setNumQuestions] = useState('5');
 
-  const { setSessionData, setCurrentTab, setError, setSummary } = useSession();
+  const {
+    documentList,
+    setDocumentList,
+    setSessionData,
+    setCurrentTab,
+    setError,
+    setSummary,
+    goToAnalytics,
+  } = useSession();
+
+  const loadDocuments = useCallback(async () => {
+    setIsLoadingDocuments(true);
+    try {
+      const history = await getHistory();
+      setDocumentList(history);
+    } catch (err) {
+      setError(`Failed to load uploaded documents: ${(err as Error).message}`);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }, [setDocumentList, setError]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -43,6 +75,7 @@ export function UploadSection() {
 
     try {
       const response = await uploadPdf(file, questions);
+      await loadDocuments();
       setSessionData({
         session_id: response.session_id,
         file_name: response.file_name,
@@ -52,6 +85,7 @@ export function UploadSection() {
       setSummary(response.summary);
       setError(null);
       setCurrentTab('summary');
+      router.push('/workspace');
     } catch (err) {
       setError(`Upload failed: ${(err as Error).message}`);
       console.error('[v0] Upload error:', err);
@@ -87,41 +121,72 @@ export function UploadSection() {
     }
   };
 
+  const openDocument = (document: HistoryEntry) => {
+    setSessionData({
+      session_id: document.session_id,
+      file_name: document.file_name,
+      created_at: document.created_at,
+      num_questions: document.num_questions ?? 0,
+    });
+    setSummary(null);
+    setError(null);
+    setCurrentTab('summary');
+    router.push('/workspace');
+  };
+
+  const removeDocument = async (document: HistoryEntry) => {
+    const confirmed = window.confirm(`Remove "${document.file_name}" from the database?`);
+    if (!confirmed) return;
+
+    setDeletingSessionId(document.session_id);
+    setError(null);
+    try {
+      await deleteDocument(document.session_id);
+      setDocumentList(documentList.filter((item) => item.session_id !== document.session_id));
+    } catch (err) {
+      setError(`Failed to remove document: ${(err as Error).message}`);
+    } finally {
+      setDeletingSessionId(null);
+    }
+  };
+
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <section className="space-y-6">
-        <div className="space-y-4">
-          <Badge
-            variant="outline"
-            className="border-primary/20 bg-primary/5 px-3 py-1 text-primary"
-          >
-            <Sparkles className="mr-2 h-3.5 w-3.5" />
-            Document Intelligence Studio
-          </Badge>
-          <div className="space-y-3">
-            <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Upload a PDF and turn it into a clean summary, quiz, and evaluation flow.
+    <div className="flex w-full flex-1 flex-col gap-6">
+      <header className="flex flex-col gap-4 border-b border-border/70 bg-layout-header px-4 py-4 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+        <div className="space-y-1">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Dashboard
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              The app extracts the document, generates a concise summary, builds a quiz,
-              and gives you a direct way to score the model output.
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Upload a PDF, reopen processed documents, and continue your review workflow.
             </p>
           </div>
         </div>
+        <Button
+          onClick={() => {
+            goToAnalytics();
+            router.push('/analysis');
+          }}
+          variant="outline"
+          className="w-fit"
+        >
+          <BarChart3 className="mr-2 h-4 w-4" />
+          Analytics
+        </Button>
+      </header>
 
-        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
-          <div className="border-b border-border/70 bg-gradient-to-r from-primary/8 via-background to-secondary/8 px-6 py-5">
+      <section className="grid gap-6 px-4 pb-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
+        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+          <div className="border-b border-border/70 px-5 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  Start here
-                </p>
-                <h2 className="text-xl font-semibold text-foreground">
-                  Drop a PDF or browse files
+                <h2 className="text-base font-semibold text-foreground">
+                  Upload document
                 </h2>
+                <p className="text-sm text-muted-foreground">PDF only</p>
               </div>
-              <Badge variant="secondary" className="rounded-full px-3 py-1">
-                <Layers3 className="mr-2 h-3.5 w-3.5" />
+              <Badge variant="outline" className="px-2.5 py-1">
                 1-20 questions
               </Badge>
             </div>
@@ -153,42 +218,28 @@ export function UploadSection() {
               tabIndex={0}
               aria-disabled={isUploading}
               className={cn(
-                'group relative flex w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-3xl border border-dashed px-6 py-10 text-left transition-all duration-300',
+                'group relative flex w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-lg border border-dashed px-5 py-7 text-left transition',
                 dragActive
-                  ? 'border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-                  : 'border-border/80 bg-muted/30 hover:border-primary/40 hover:bg-primary/5',
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border/80 bg-muted/20 hover:border-primary/40 hover:bg-muted/40',
                 isUploading && 'cursor-not-allowed opacity-80'
               )}
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_32%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-sm ring-1 ring-border">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-background ring-1 ring-border">
                 {isUploading ? (
-                  <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 ) : (
-                  <Upload className="h-7 w-7 text-primary" />
+                  <Upload className="h-5 w-5 text-primary" />
                 )}
               </div>
 
               <div className="relative space-y-2 text-center">
-                <p className="text-lg font-semibold text-foreground">
+                <p className="text-base font-semibold text-foreground">
                   {dragActive ? 'Release to upload your PDF' : 'Drag and drop your PDF here'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  or click anywhere in this panel to choose a file
+                  or use the button below
                 </p>
-              </div>
-
-              <div className="relative flex flex-wrap items-center justify-center gap-2">
-                <Badge variant="outline" className="rounded-full px-3 py-1">
-                  Secure upload
-                </Badge>
-                <Badge variant="outline" className="rounded-full px-3 py-1">
-                  Fast processing
-                </Badge>
-                <Badge variant="outline" className="rounded-full px-3 py-1">
-                  AI summary + quiz
-                </Badge>
               </div>
 
               <div className="relative">
@@ -199,8 +250,8 @@ export function UploadSection() {
                     fileInputRef.current?.click();
                   }}
                   disabled={isUploading}
-                  size="lg"
-                  className="min-w-40 rounded-full px-6"
+                  size="sm"
+                  className="px-4"
                 >
                   {isUploading ? 'Uploading...' : 'Choose PDF'}
                 </Button>
@@ -224,11 +275,97 @@ export function UploadSection() {
                   value={numQuestions}
                   onChange={(e) => setNumQuestions(e.target.value)}
                   disabled={isUploading}
-                  className="w-28 rounded-xl"
+                  className="w-28"
                 />
                 <span className="text-sm text-muted-foreground">questions</span>
               </div>
             </div>
+          </div>
+        </Card>
+
+        <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+          <div className="border-b border-border/70 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-foreground">
+                  Already uploaded
+                </h2>
+                <p className="text-sm text-muted-foreground">Recent processed PDFs</p>
+              </div>
+              <Button
+                type="button"
+                onClick={loadDocuments}
+                variant="outline"
+                size="sm"
+                className=""
+                disabled={isLoadingDocuments}
+              >
+                <RefreshCw className={cn('mr-2 h-4 w-4', isLoadingDocuments && 'animate-spin')} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          <div className="divide-y divide-border/70">
+            {isLoadingDocuments && documentList.length === 0 ? (
+              <div className="px-6 py-10 text-sm text-muted-foreground">
+                Loading uploaded documents...
+              </div>
+            ) : documentList.length === 0 ? (
+              <div className="px-6 py-10 text-sm text-muted-foreground">
+                No uploaded documents yet.
+              </div>
+            ) : (
+              documentList.map((document) => (
+                <div
+                  key={document.session_id}
+                  className="flex items-center gap-3 px-5 py-4 transition hover:bg-muted/40"
+                >
+                  <button
+                    type="button"
+                    onClick={() => openDocument(document)}
+                    className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <FileText className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {document.file_name}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>
+                          {formatDistanceToNow(new Date(document.created_at), {
+                            addSuffix: true,
+                          })}
+                        </span>
+                        <span>{document.num_questions ?? 0} questions</span>
+                        {document.status && (
+                          <Badge variant="outline" className="rounded-full px-2 py-0 text-[11px]">
+                            {document.status}
+                          </Badge>
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    onClick={() => removeDocument(document)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    disabled={deletingSessionId === document.session_id}
+                    aria-label={`Remove ${document.file_name}`}
+                  >
+                    {deletingSessionId === document.session_id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </section>

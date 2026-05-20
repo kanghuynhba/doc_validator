@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session as DBSession
 from app.models.session import Session
 from app.repositories.llm_evaluation_repository import LLMEvaluationRepository
 from app.repositories.quiz_repository import QuizResultRepository
-from app.schemas.analytics import AnalyticsOverviewResponse
+from app.schemas.analytics import (
+    AnalyticsOverviewResponse,
+    LinearRegressionAnalysisResponse,
+    LinearRegressionLinePoint,
+    LinearRegressionPoint,
+)
 
 
 class AnalyticsService:
@@ -39,6 +44,62 @@ class AnalyticsService:
             average_quiz_score=round(avg_quiz_score, 2),
             average_llm_performance_score=round(avg_llm_score, 2),
             label_distribution=distribution,
+        )
+
+    def linear_regression_analysis(self) -> LinearRegressionAnalysisResponse:
+        evals = self._eval_repo.get_all()
+        if len(evals) < 2:
+            return LinearRegressionAnalysisResponse(
+                sample_count=len(evals),
+                r2_score=None,
+                points=[],
+                line=[],
+            )
+
+        from sklearn.linear_model import LinearRegression
+
+        features = [
+            [row.summary_rating, row.quiz_rating, row.learning_outcome]
+            for row in evals
+        ]
+        targets = [row.llm_performance_score for row in evals]
+        model = LinearRegression()
+        model.fit(features, targets)
+        predictions = model.predict(features)
+
+        points = [
+            LinearRegressionPoint(
+                session_id=row.session_id,
+                file_name=row.session.filename if row.session else row.session_id,
+                predicted_score=round(float(prediction), 2),
+                actual_score=round(float(row.llm_performance_score), 2),
+            )
+            for row, prediction in zip(evals, predictions)
+        ]
+
+        min_score = min(
+            min(point.predicted_score, point.actual_score)
+            for point in points
+        )
+        max_score = max(
+            max(point.predicted_score, point.actual_score)
+            for point in points
+        )
+
+        return LinearRegressionAnalysisResponse(
+            sample_count=len(evals),
+            r2_score=round(float(model.score(features, targets)), 4),
+            points=sorted(points, key=lambda point: point.predicted_score),
+            line=[
+                LinearRegressionLinePoint(
+                    predicted_score=round(min_score, 2),
+                    ideal_score=round(min_score, 2),
+                ),
+                LinearRegressionLinePoint(
+                    predicted_score=round(max_score, 2),
+                    ideal_score=round(max_score, 2),
+                ),
+            ],
         )
 
 
