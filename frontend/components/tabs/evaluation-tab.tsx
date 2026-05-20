@@ -48,7 +48,6 @@ export function EvaluationTab() {
       setCurrentTab('performance');
     } catch (err) {
       setError(`Failed to submit evaluation: ${(err as Error).message}`);
-      console.error('[v0] Evaluation submit error:', err);
     } finally {
       setIsSubmitting(false);
     }

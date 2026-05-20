@@ -14,6 +14,7 @@ export function ResultTab() {
   const {
     gradeResult,
     summaryRating,
+    setSummaryRating,
     quizRating,
     setQuizRating,
     feedback,
@@ -66,7 +67,6 @@ export function ResultTab() {
       setEvaluationResult(result);
     } catch (err) {
       setError(`Failed to submit evaluation: ${(err as Error).message}`);
-      console.error('[v0] Evaluation submission error:', err);
     } finally {
       setSubmittingEval(false);
     }
@@ -173,6 +173,13 @@ export function ResultTab() {
           </div>
 
           <div className="space-y-6 px-6 py-6">
+            <StarRating
+              value={summaryRating || 0}
+              onChange={setSummaryRating}
+              size="lg"
+              label="Summary quality"
+            />
+
             <StarRating
               value={quizRating || 0}
               onChange={setQuizRating}

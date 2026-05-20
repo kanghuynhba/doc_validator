@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 
-from app.dependencies import get_db
+from app.database import get_db
 from app.schemas.grading import GradeRequest, GradeResponse
 from app.services.grader import Grader
 

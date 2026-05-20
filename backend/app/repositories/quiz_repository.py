@@ -29,6 +29,23 @@ class QuizResultRepository:
         self._db.flush()
         return result
 
+    def replace_for_session(
+        self,
+        session_id: str,
+        score: float,
+        correct_answers: int,
+        total_questions: int,
+    ) -> QuizResult:
+        for result in self.get_by_session(session_id):
+            self._db.delete(result)
+        self._db.flush()
+        return self.create(
+            session_id=session_id,
+            score=score,
+            correct_answers=correct_answers,
+            total_questions=total_questions,
+        )
+
     def get_by_session(self, session_id: str) -> list[QuizResult]:
         return self._db.query(QuizResult).filter(QuizResult.session_id == session_id).all()
 

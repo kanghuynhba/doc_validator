@@ -70,8 +70,8 @@ export function Dashboard() {
   return (
     <div className="flex w-full flex-1 flex-col">
       <header className="border-b border-border/70 bg-layout-header px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={goToDashboard}
@@ -80,16 +80,29 @@ export function Dashboard() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               New document
             </button>
+
             <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {sessionData.file_name}
-            </h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Work through the generated summary, quiz, and review for this document.
-            </p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                {sessionData.file_name}
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                Work through the generated summary, quiz, and review for this document.
+              </p>
             </div>
           </div>
-        </div>
+
+          <Button
+            onClick={() => {
+              setCurrentTab('analytics');
+              router.push('/analysis');
+            }}
+            variant="outline"
+            className="w-fit justify-self-start lg:justify-self-end"
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Analysis
+          </Button>
+          </div>
       </header>
 
       {error && (
@@ -142,26 +155,11 @@ export function Dashboard() {
                 ))}
             </div>
 
-            <div className="border-t border-border/70 pt-4">
-              <Button
-                onClick={() => {
-                  setCurrentTab('analytics');
-                  router.push('/analysis');
-                }}
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Analysis
-              </Button>
-            </div>
-
             <div className="space-y-3 border-t border-border/70 pt-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Document
               </p>
               <div>
-                <p className="text-sm text-muted-foreground">Document</p>
                 <p className="mt-1 font-medium text-foreground">{sessionData.file_name}</p>
               </div>
               <div>

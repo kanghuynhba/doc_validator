@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 
-from app.dependencies import get_db
+from app.database import get_db
 from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
 from app.services.evaluation_service import EvaluationService
 

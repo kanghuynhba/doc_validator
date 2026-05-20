@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session as DBSession
 
-from app.dependencies import get_db
+from app.database import get_db
 from app.schemas.upload import UploadResponse
 from app.services.document_pipeline import DocumentPipelineService
 from app.services.lite_llm_client import LiteLLMClient

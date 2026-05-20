@@ -194,7 +194,6 @@ export function SummaryTab() {
         setSummary(response.summary);
       } catch (err) {
         setError(`Failed to fetch summary: ${(err as Error).message}`);
-        console.error('[v0] Summary fetch error:', err);
       } finally {
         setIsLoading(false);
       }

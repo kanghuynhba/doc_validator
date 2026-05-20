@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from app.logging_config import get_logger
 from app.services.prompt_loader import load_prompt
 from app.services.text_chunker import TextChunker
+from app.utils.text_utils import normalize_output
 
 if TYPE_CHECKING:
     from app.services.lite_llm_client import LiteLLMClient
@@ -49,29 +50,6 @@ class Summarizer:
 
     def should_summarize_directly(self, text: str) -> bool:
         return len(text) <= self.direct_summary_char_limit
-
-    @staticmethod
-    def _clean_output(text: str) -> str:
-        cleaned = text.strip()
-        cleaned = cleaned.replace("\u2022", "\n- ")
-        cleaned = cleaned.replace("\u2219", "\n- ")
-        cleaned = cleaned.replace("●", "\n- ")
-        cleaned = cleaned.replace("•", "\n- ")
-        cleaned = cleaned.replace("  ", " ")
-
-        lines = [line.rstrip() for line in cleaned.splitlines()]
-        normalized_lines: list[str] = []
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                if normalized_lines and normalized_lines[-1] != "":
-                    normalized_lines.append("")
-                continue
-            if stripped.startswith("-") and len(stripped) > 1:
-                normalized_lines.append(f"- {stripped.lstrip('- ').strip()}")
-            else:
-                normalized_lines.append(stripped)
-        return "\n".join(normalized_lines).strip()
 
     async def summarize_document(
         self,
@@ -129,7 +107,7 @@ class Summarizer:
 
         prompt = self._chunk_prompt_template.replace("{{content}}", text)
         result = await self._llm_client.complete(prompt, max_tokens=self.summary_max_tokens, chunk_index=None)
-        return self._clean_output(result) if result else ""
+        return normalize_output(result) if result else ""
 
     async def _reduce(self, chunk_summaries: list[str]) -> str:
         filtered = [s.strip() for s in chunk_summaries if s.strip()]
@@ -138,4 +116,4 @@ class Summarizer:
 
         prompt = self._reduce_prompt_template.replace("{{content}}", "\n\n".join(filtered))
         result = await self._llm_client.complete(prompt, max_tokens=self.reduce_max_tokens, chunk_index=None) if self._llm_client else ""
-        return self._clean_output(result) if result else ""
+        return normalize_output(result) if result else ""

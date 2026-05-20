@@ -48,12 +48,6 @@ class QuizGenerator:
 
         return validated
 
-    def generate_quiz(self, content: str, num_questions: int = 10) -> list[QuizQuestionCreate]:
-        if self._llm_client is None:
-            raise RuntimeError("LLM client not set on QuizGenerator")
-        import asyncio
-        return asyncio.run(self.generate_quiz_async(content, num_questions))
-
     @staticmethod
     def _normalize_choices(choices: Any) -> Any:
         if isinstance(choices, dict):

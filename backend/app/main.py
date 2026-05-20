@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,7 +13,15 @@ from app.routes.upload import shutdown_llm_client
 settings = get_settings()
 configure_logging()
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    yield
+    await shutdown_llm_client()
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,16 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    create_db_and_tables()
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    await shutdown_llm_client()
 
 
 app.include_router(health.router, prefix=settings.api_prefix)

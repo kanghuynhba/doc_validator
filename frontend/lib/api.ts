@@ -247,6 +247,7 @@ export async function evaluateLLM(
   );
   return {
     session_id: data.session_id,
+    // Backend stores satisfaction as 0-100; the UI keeps the original 1-5 star value.
     summary_rating: data.summary_satisfaction / 20,
     quiz_rating: data.quiz_satisfaction / 20,
     quiz_score: data.learning_outcome,
@@ -297,18 +298,29 @@ function getMockData(endpoint: string): unknown {
       summary: 'This is a mock summary of the PDF content.\n\n- The outline has been removed.\n- The frontend now shows a simple readable summary.',
       word_count: 11,
     },
-    '/api/session/mock-session-123/quiz': {
+    '/api/quiz/mock-session-123': {
       session_id: 'mock-session-123',
+      total: 2,
       questions: [
         {
-          question_id: 'q1',
+          id: 1,
           question: 'What is the main topic of this document?',
-          options: ['Option A', 'Option B', 'Option C', 'Option D'],
+          choices: {
+            A: 'Option A',
+            B: 'Option B',
+            C: 'Option C',
+            D: 'Option D',
+          },
         },
         {
-          question_id: 'q2',
+          id: 2,
           question: 'Which of the following is correct?',
-          options: ['Choice 1', 'Choice 2', 'Choice 3', 'Choice 4'],
+          choices: {
+            A: 'Choice 1',
+            B: 'Choice 2',
+            C: 'Choice 3',
+            D: 'Choice 4',
+          },
         },
       ],
     },

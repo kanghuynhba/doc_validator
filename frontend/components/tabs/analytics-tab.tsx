@@ -62,7 +62,6 @@ export function AnalyticsTab() {
         setRegression(regressionData);
       } catch (err) {
         setError(`Failed to load analytics: ${(err as Error).message}`);
-        console.error('[v0] Analytics fetch error:', err);
       } finally {
         setIsLoading(false);
       }

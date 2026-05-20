@@ -67,9 +67,14 @@ class DocumentPipelineService:
         if not text.strip():
             raise HTTPException(status_code=400, detail="No readable text found in PDF")
 
+        should_summarize_directly = (
+            self._summarizer.should_summarize_directly(text)
+            if self._summarizer
+            else False
+        )
         chunks = (
             [text]
-            if self._summarizer and self._summarizer.should_summarize_directly(text)
+            if should_summarize_directly
             else self._summarizer.chunk_document(text) if self._summarizer else []
         )
         if not chunks:
@@ -86,7 +91,7 @@ class DocumentPipelineService:
         try:
             final_summary = (
                 await self._summarizer.summarize_direct(text, session_id=session.id)
-                if self._summarizer.should_summarize_directly(text)
+                if should_summarize_directly
                 else await self._summarizer.summarize_chunks(chunks, session_id=session.id)
             )
 

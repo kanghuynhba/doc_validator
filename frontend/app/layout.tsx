@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: 'Document Intelligence Studio',
   description:
     'Upload PDFs, generate concise summaries, take adaptive quizzes, and review model performance in a clean workspace.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

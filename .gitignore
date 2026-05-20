@@ -21,6 +21,7 @@ __pycache__/
 .venv/
 .env
 *.db
+*.db-journal
 
 # Backend model artifacts
 backend/models/

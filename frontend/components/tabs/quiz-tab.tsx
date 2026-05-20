@@ -40,7 +40,6 @@ export function QuizTab() {
         setAnswers(initialAnswers);
       } catch (err) {
         setError(`Failed to fetch quiz: ${(err as Error).message}`);
-        console.error('[v0] Quiz fetch error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -75,7 +74,6 @@ export function QuizTab() {
       setCurrentTab('result');
     } catch (err) {
       setError(`Failed to submit quiz: ${(err as Error).message}`);
-      console.error('[v0] Quiz submit error:', err);
     } finally {
       setIsSubmitting(false);
     }

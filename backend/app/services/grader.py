@@ -36,7 +36,7 @@ class Grader:
 
         total = len(questions)
         score = round((correct / total) * 100, 2)
-        quiz_result = self._quiz_result_repo.create(
+        quiz_result = self._quiz_result_repo.replace_for_session(
             session_id=session_id,
             score=score,
             correct_answers=correct,

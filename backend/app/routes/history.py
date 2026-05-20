@@ -4,14 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
-from app.dependencies import get_db
-from app.models.llm_call import LLMCall
-from app.models.llm_evaluation import LLMEvaluation
-from app.models.question import Question
-from app.models.quiz_answer import QuizAnswer
-from app.models.quiz_result import QuizResult
+from app.database import get_db
 from app.models.session import Session
-from app.models.summary import Summary
 
 
 router = APIRouter(tags=["history"])
@@ -62,42 +56,5 @@ def delete_history_entry(session_id: str, db: DBSession = Depends(get_db)) -> No
     if session is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    quiz_result_ids = [
-        row[0]
-        for row in db.query(QuizResult.id)
-        .filter(QuizResult.session_id == session_id)
-        .all()
-    ]
-    question_ids = [
-        row[0]
-        for row in db.query(Question.id)
-        .filter(Question.session_id == session_id)
-        .all()
-    ]
-
-    if quiz_result_ids:
-        db.query(QuizAnswer).filter(
-            QuizAnswer.quiz_result_id.in_(quiz_result_ids)
-        ).delete(synchronize_session=False)
-    if question_ids:
-        db.query(QuizAnswer).filter(
-            QuizAnswer.question_id.in_(question_ids)
-        ).delete(synchronize_session=False)
-
-    db.query(QuizResult).filter(QuizResult.session_id == session_id).delete(
-        synchronize_session=False
-    )
-    db.query(Question).filter(Question.session_id == session_id).delete(
-        synchronize_session=False
-    )
-    db.query(Summary).filter(Summary.session_id == session_id).delete(
-        synchronize_session=False
-    )
-    db.query(LLMEvaluation).filter(LLMEvaluation.session_id == session_id).delete(
-        synchronize_session=False
-    )
-    db.query(LLMCall).filter(LLMCall.session_id == session_id).delete(
-        synchronize_session=False
-    )
     db.delete(session)
     db.commit()

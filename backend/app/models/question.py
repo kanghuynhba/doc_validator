@@ -18,4 +18,7 @@ class Question(Base):
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
 
     session: Mapped["Session"] = relationship(back_populates="questions")
-    quiz_answers: Mapped[list["QuizAnswer"]] = relationship(back_populates="question")
+    quiz_answers: Mapped[list["QuizAnswer"]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+    )

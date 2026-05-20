@@ -21,3 +21,4 @@ class Session(Base):
     questions: Mapped[list["Question"]] = relationship(back_populates="session", cascade="all, delete-orphan")
     quiz_results: Mapped[list["QuizResult"]] = relationship(back_populates="session", cascade="all, delete-orphan")
     evaluation: Mapped["LLMEvaluation | None"] = relationship(back_populates="session", uselist=False, cascade="all, delete-orphan")
+    llm_calls: Mapped[list["LLMCall"]] = relationship(back_populates="session", cascade="all, delete-orphan")

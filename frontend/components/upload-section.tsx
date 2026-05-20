@@ -88,7 +88,6 @@ export function UploadSection() {
       router.push('/workspace');
     } catch (err) {
       setError(`Upload failed: ${(err as Error).message}`);
-      console.error('[v0] Upload error:', err);
     } finally {
       setIsUploading(false);
     }
@@ -218,7 +217,7 @@ export function UploadSection() {
               tabIndex={0}
               aria-disabled={isUploading}
               className={cn(
-                'group relative flex w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-lg border border-dashed px-5 py-7 text-left transition',
+                'group relative flex w-full flex-col items-start justify-center gap-5 overflow-hidden rounded-lg border border-dashed px-5 py-12 text-left transition',
                 dragActive
                   ? 'border-primary bg-primary/5'
                   : 'border-border/80 bg-muted/20 hover:border-primary/40 hover:bg-muted/40',
@@ -233,12 +232,9 @@ export function UploadSection() {
                 )}
               </div>
 
-              <div className="relative space-y-2 text-center">
+              <div className="relative space-y-1">
                 <p className="text-base font-semibold text-foreground">
-                  {dragActive ? 'Release to upload your PDF' : 'Drag and drop your PDF here'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  or use the button below
+                  {dragActive ? 'Release to upload' : 'Drop a PDF to get started'}
                 </p>
               </div>
 

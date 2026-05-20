@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import time
 from typing import Any
 
@@ -118,7 +119,7 @@ class LiteLLMClient:
             for line in lines:
                 if line.startswith(("Section:", "#", "Key ideas:", "Details:")):
                     kept.append(line)
-                elif line.startswith(("- ", "• ")) or bool(__import__("re").match(r"^\d+[\).\:-]\s+", line)):
+                elif line.startswith(("- ", "• ")) or bool(re.match(r"^\d+[\).\:-]\s+", line)):
                     kept.append(line)
                 if len(kept) >= 18:
                     break
@@ -129,7 +130,7 @@ class LiteLLMClient:
         if paragraphs:
             snippets = []
             for paragraph in paragraphs[:4]:
-                sentences = __import__("re").split(r"(?<=[.!?])\s+", paragraph)
+                sentences = re.split(r"(?<=[.!?])\s+", paragraph)
                 snippets.append(" ".join(sentences[:2]).strip())
             summary = "\n\n".join(snippets).strip()
             if summary:
@@ -140,7 +141,6 @@ class LiteLLMClient:
 
     @staticmethod
     def _fallback_quiz(prompt: str) -> list[dict[str, Any]]:
-        import re
         content = prompt.split("CONTENT:", 1)[-1].strip()
         snippets = [s.strip() for s in content.replace("\n", " ").split(".") if s.strip()]
         questions = []

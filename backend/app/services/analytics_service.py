@@ -1,6 +1,8 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession
 
+from app.ml.linear_regression import LinearRegressionTrainer
+from app.models.quiz_result import QuizResult
 from app.models.session import Session
 from app.repositories.llm_evaluation_repository import LLMEvaluationRepository
 from app.repositories.quiz_repository import QuizResultRepository
@@ -56,15 +58,13 @@ class AnalyticsService:
                 line=[],
             )
 
-        from sklearn.linear_model import LinearRegression
-
         features = [
             [row.summary_rating, row.quiz_rating, row.learning_outcome]
             for row in evals
         ]
         targets = [row.llm_performance_score for row in evals]
-        model = LinearRegression()
-        model.fit(features, targets)
+        trainer = LinearRegressionTrainer()
+        model = trainer.fit(features, targets)
         predictions = model.predict(features)
 
         points = [
@@ -101,7 +101,3 @@ class AnalyticsService:
                 ),
             ],
         )
-
-
-# Workaround for circular import inside overview()
-from app.models.quiz_result import QuizResult
