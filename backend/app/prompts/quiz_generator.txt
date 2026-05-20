@@ -3,7 +3,23 @@ Generate exactly {num_questions} multiple-choice questions from the provided doc
 Each question must have exactly 4 choices (A, B, C, D), one correct answer, and a brief explanation.
 
 Return ONLY a valid JSON array with no markdown formatting or extra text.
-Each object must have these exact keys: question, choices (object with A/B/C/D keys), correct_answer (A/B/C/D), explanation.
+Each item must follow this exact schema:
+{{
+  "question": "string",
+  "choices": {{
+    "A": "string",
+    "B": "string",
+    "C": "string",
+    "D": "string"
+  }},
+  "correct_answer": "A",
+  "explanation": "string"
+}}
+
+Important:
+- choices must be an object, not a list.
+- Do not write "A. " or "A) " inside the choice text.
+- correct_answer must be only one letter: A, B, C, or D.
 
 CONTENT:
 {content}

@@ -1,5 +1,6 @@
 Summarise the following text into a concise, well-structured overview.
-Keep the summary to 3–5 key points. Use clear section headings where appropriate.
+Keep the summary to 2–4 key points. Focus on facts needed to understand the document.
+Use clear section headings only when they add clarity.
 
 CONTENT:
 {{content}}

@@ -36,9 +36,11 @@ class AsyncLLMClient:
     # ------------------------------------------------------------------ #
     def _build_client(self) -> httpx.AsyncClient:
         api_key = self._settings.github_completion_api_key or self._settings.openai_api_key
-        base_url = self._settings.github_endpoint
-        timeout = httpx.Timeout(60.0, connect=10.0)
+        base_url = self._settings.github_endpoint or "http://127.0.0.1:8081/v1"
+
+        timeout = httpx.Timeout(180.0, connect=10.0)
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
         return httpx.AsyncClient(base_url=base_url, timeout=timeout, headers=headers)
 
     @property

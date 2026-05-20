@@ -1,14 +1,12 @@
 """Two-stage async document summariser: map (per-chunk) → reduce (final).
 
-Chunk summaries are produced concurrently using asyncio.gather so the total
-LLM round-trip time is close to the latency of a single chunk rather than
-the sum of all chunks.
+Chunk summaries are produced with bounded concurrency so local LLM servers are
+not flooded with simultaneous generation requests.
 """
 
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import TYPE_CHECKING
 
 from app.logging_config import get_logger, log_chunk_progress, log_pipeline_stage
@@ -28,11 +26,19 @@ class Summarizer:
         text_chunker: TextChunker | None = None,
         chunk_size: int = 1000,
         overlap: int = 100,
+        direct_summary_char_limit: int = 30000,
+        max_concurrency: int = 1,
+        summary_max_tokens: int = 900,
+        reduce_max_tokens: int = 1000,
     ) -> None:
         self._llm_client = llm_client
         self._text_chunker = text_chunker or TextChunker()
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.direct_summary_char_limit = direct_summary_char_limit
+        self.max_concurrency = max(1, max_concurrency)
+        self.summary_max_tokens = summary_max_tokens
+        self.reduce_max_tokens = reduce_max_tokens
         self._chunk_prompt_template = load_prompt("summarizer_chunk.txt")
         self._reduce_prompt_template = load_prompt("summarizer_reduce.txt")
         self._log = get_logger(__name__)
@@ -50,6 +56,9 @@ class Summarizer:
         size = chunk_size if chunk_size is not None else self.chunk_size
         ov = overlap if overlap is not None else self.overlap
         return self._text_chunker.chunk_text(text, chunk_size=size, overlap=ov)
+
+    def should_summarize_directly(self, text: str) -> bool:
+        return len(text) <= self.direct_summary_char_limit
 
     # ------------------------------------------------------------------ #
     # Output cleaning (matches original _clean_output behaviour)
@@ -88,8 +97,18 @@ class Summarizer:
         chunk_size: int | None = None,
         overlap: int | None = None,
     ) -> str:
-        """Full async pipeline: chunk → map → reduce."""
+        """Summarise directly for small docs, otherwise use map-reduce."""
+        if self.should_summarize_directly(text):
+            return await self._summarize_direct(text, session_id=session_id)
+
         chunks = self.chunk_document(text, chunk_size=chunk_size, overlap=overlap)
+        return await self.summarize_chunks(chunks, session_id=session_id)
+
+    async def summarize_direct(self, text: str, session_id: int | None = None) -> str:
+        return await self._summarize_direct(text, session_id=session_id)
+
+    async def summarize_chunks(self, chunks: list[str], session_id: int | None = None) -> str:
+        """Full async pipeline from precomputed chunks: map → reduce."""
         if not chunks:
             return ""
 
@@ -104,14 +123,21 @@ class Summarizer:
         return final_summary
 
     async def _map_summaries(self, chunks: list[str], session_id: int | None = None) -> list[str]:
-        """Send all chunk summarisation prompts concurrently."""
-        self._log.info("→ Starting parallel summarisation of %d chunks", len(chunks))
+        """Send chunk summarisation prompts with bounded concurrency."""
+        self._log.info(
+            "→ Starting summarisation of %d chunks with concurrency=%d",
+            len(chunks),
+            self.max_concurrency,
+        )
         log_pipeline_stage(self._log, "map_stage", session_id=session_id, total_chunks=len(chunks))
 
-        tasks = [
-            self._summarize_single_chunk(chunk, idx, total=len(chunks), session_id=session_id)
-            for idx, chunk in enumerate(chunks)
-        ]
+        semaphore = asyncio.Semaphore(self.max_concurrency)
+
+        async def run_chunk(chunk: str, idx: int) -> str:
+            async with semaphore:
+                return await self._summarize_single_chunk(chunk, idx, total=len(chunks), session_id=session_id)
+
+        tasks = [run_chunk(chunk, idx) for idx, chunk in enumerate(chunks)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         summaries: list[str] = []
@@ -134,7 +160,17 @@ class Summarizer:
             raise RuntimeError("LLM client not set on Summarizer")
 
         prompt = self._chunk_prompt_template.replace("{{content}}", chunk)
-        return await self._llm_client.complete(prompt, max_tokens=700, chunk_index=idx)
+        return await self._llm_client.complete(prompt, max_tokens=self.summary_max_tokens, chunk_index=idx)
+
+    async def _summarize_direct(self, text: str, session_id: int | None = None) -> str:
+        """Summarise a small document in one LLM call."""
+        if self._llm_client is None:
+            raise RuntimeError("LLM client not set on Summarizer")
+
+        log_pipeline_stage(self._log, "direct_summary", session_id=session_id, text_len=len(text))
+        prompt = self._chunk_prompt_template.replace("{{content}}", text)
+        result = await self._llm_client.complete(prompt, max_tokens=self.summary_max_tokens, chunk_index=None)
+        return self._clean_output(result) if result else ""
 
     async def _reduce(self, chunk_summaries: list[str]) -> str:
         """Reduce all chunk summaries into one final summary."""
@@ -143,5 +179,5 @@ class Summarizer:
             return ""
 
         prompt = self._reduce_prompt_template.replace("{{content}}", "\n\n".join(filtered))
-        result = await self._llm_client.complete(prompt, max_tokens=2000, chunk_index=None) if self._llm_client else ""
+        result = await self._llm_client.complete(prompt, max_tokens=self.reduce_max_tokens, chunk_index=None) if self._llm_client else ""
         return self._clean_output(result) if result else ""

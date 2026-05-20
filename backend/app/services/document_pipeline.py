@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import logging
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, UploadFile
@@ -11,14 +9,10 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.config import get_settings
 from app.logging_config import get_logger, log_pipeline_stage
-from app.models.question import Question
-from app.models.session import Session
-from app.models.summary import Summary
 from app.repositories import QuestionRepository, SessionRepository, SummaryRepository
 from app.repositories.llm_call_repository import LLMCallRepository
 from app.schemas.upload import UploadResponse
 from app.services.pdf_processor import PDFProcessor
-from app.services.quiz_generator import QuizGenerator
 from app.services.quiz_validator import QuizValidator
 
 if TYPE_CHECKING:
@@ -59,6 +53,10 @@ class DocumentPipelineService:
         s = Summarizer(
             chunk_size=self._settings.chunk_size,
             overlap=self._settings.chunk_overlap,
+            direct_summary_char_limit=self._settings.direct_summary_char_limit,
+            max_concurrency=self._settings.max_llm_concurrency,
+            summary_max_tokens=self._settings.summary_max_tokens,
+            reduce_max_tokens=self._settings.reduce_max_tokens,
         )
         s.set_llm_client(client)
         return s
@@ -79,7 +77,11 @@ class DocumentPipelineService:
         if not text.strip():
             raise HTTPException(status_code=400, detail="No readable text found in PDF")
 
-        chunks = self._summarizer.chunk_document(text) if self._summarizer else []
+        chunks = (
+            [text]
+            if self._summarizer and self._summarizer.should_summarize_directly(text)
+            else self._summarizer.chunk_document(text) if self._summarizer else []
+        )
         if not chunks:
             raise HTTPException(status_code=400, detail="No text chunks could be created")
 
@@ -91,8 +93,12 @@ class DocumentPipelineService:
         log_pipeline_stage(self._log, "session_created", session_id=session.id, num_chunks=len(chunks))
 
         try:
-            # ── Async summarisation (parallel chunks) ──────────────────
-            final_summary = await self._summarizer.summarize_document(text, session_id=session.id)
+            # ── Async summarisation ───────────────────────────────────
+            final_summary = (
+                await self._summarizer.summarize_direct(text, session_id=session.id)
+                if self._summarizer.should_summarize_directly(text)
+                else await self._summarizer.summarize_chunks(chunks, session_id=session.id)
+            )
 
             self._summary_repo.upsert(
                 session_id=session.id,
@@ -141,5 +147,5 @@ class DocumentPipelineService:
             self._db.rollback()
             self._session_repo.update_status(session.id, "failed")
             self._db.commit()
-            self._log.error("Pipeline failed for session %d: %s", session.id, exc, exc_info=True)
+            self._log.error("Pipeline failed for session %s: %s", session.id, exc, exc_info=True)
             raise HTTPException(status_code=500, detail=f"Processing failed: {exc}") from exc
